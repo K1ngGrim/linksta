@@ -11,9 +11,15 @@ linksta pull
 ✓ 1 neu, 1 aktualisiert (84 Dateien, 4.3 MB geladen)
 ```
 
+📖 **Anleitung:** https://k1nggrim.github.io/linksta/
+
 ## Installation
 
-**Variante A – fertige Einzeldatei (kein .NET nötig):**
+Fertige Programme für macOS, Linux und Windows gibt es auf der
+[Release-Seite](https://github.com/K1ngGrim/linksta/releases/latest). Die Schritte pro System
+stehen in der [Anleitung](https://k1nggrim.github.io/linksta/#installieren).
+
+**Selbst bauen (kein .NET auf dem Zielrechner nötig):**
 
 ```bash
 ./publish.sh
@@ -155,6 +161,17 @@ crontab -e
 ```powershell
 schtasks /Create /SC HOURLY /TN linksta /TR "%USERPROFILE%\bin\linksta.exe pull -q"
 ```
+
+## Release & Doku veröffentlichen
+
+- **Doku:** `docs/index.html` wird bei jedem Push auf `main` per GitHub Actions auf GitHub Pages veröffentlicht.
+  Einmalig im Repo unter *Settings → Pages → Source* „GitHub Actions“ auswählen.
+- **Release:** Ein Tag wie `v1.0.0` pushen. Die Actions bauen dann alle Plattformen (macOS auf macOS-Runnern,
+  damit die Binaries signiert sind) und hängen sie mit Prüfsummen an ein GitHub-Release:
+
+  ```bash
+  git tag v1.0.0 && git push origin v1.0.0
+  ```
 
 ## Entwicklung
 

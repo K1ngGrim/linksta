@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>linksta – ILIAS offline</title>
+<meta name="description" content="linksta lädt deine ILIAS-Kurse auf den Rechner und hält sie mit einem Befehl aktuell. Für macOS, Linux und Windows.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23203052'/%3E%3Crect x='7' y='17' width='18' height='6' rx='2' fill='%23F4E04D'/%3E%3Cpath d='M10 8v9M16 8v9M22 8v9' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  --paper: #ECEFF3;
+  --sheet: #F8F9FB;
+  --ink: #18213A;
+  --ink-soft: #4A5571;
+  --rule: #CDD3DE;
+  --term: #203052;
+  --term-ink: #DCE3F1;
+  --term-dim: #8494B6;
+  --marker: #F4E04D;
+  --marker-ink: #18213A;
+  --new: #2E7D57;
+  --upd: #2F6BD8;
+  --warn: #A8641B;
+  --new-term: #7FD3A6;
+  --upd-term: #8DB4FF;
+  --warn-term: #F2C46B;
+  --focus: #2F6BD8;
+  --sans: "Bricolage Grotesque", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121A2C; --sheet: #18223A; --ink: #E6EAF3; --ink-soft: #A6B0C7; --rule: #2B3756;
+    --term: #0E1526; --marker: #E9D43C; --marker-ink: #121A2C; --new: #6FCB98; --upd: #86ABFF; --warn: #F0B860; --focus: #86ABFF;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121A2C; --sheet: #18223A; --ink: #E6EAF3; --ink-soft: #A6B0C7; --rule: #2B3756;
+  --term: #0E1526; --marker: #E9D43C; --marker-ink: #121A2C; --new: #6FCB98; --upd: #86ABFF; --warn: #F0B860; --focus: #86ABFF;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--sans); font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--upd); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------- Grundgerüst ---------- */
+.layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); max-width: 72rem; margin: 0 auto; gap: 3.5rem; padding: 0 2rem; }
+nav.toc { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 2.5rem 0; }
+.brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; color: var(--ink); text-decoration: none; }
+.brand svg { flex: none; }
+.toc ul { list-style: none; margin: 2rem 0 0; padding: 0; }
+.toc li a { display: block; padding: .32rem .7rem; margin-left: -.7rem; border-radius: 6px; color: var(--ink-soft); text-decoration: none; font-size: .97rem; }
+.toc li a:hover { color: var(--ink); background: var(--sheet); }
+.toc li a[aria-current="true"] { color: var(--ink); font-weight: 600; background: var(--sheet); box-shadow: inset 3px 0 0 var(--marker); }
+.toc .gh { margin-top: 2rem; font-size: .95rem; }
+main { padding: 2.5rem 0 6rem; min-width: 0; }
+.prose { max-width: 42rem; }
+
+/* ---------- Typografie ---------- */
+h1 { font-size: clamp(2.6rem, 6vw, 4.1rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; margin: 2.2rem 0 1rem; max-width: 14ch; }
+h2 { font-size: 1.85rem; line-height: 1.15; letter-spacing: -.02em; font-weight: 800; margin: 4.5rem 0 .9rem; }
+h3 { font-size: 1.2rem; line-height: 1.3; font-weight: 600; margin: 2.2rem 0 .5rem; }
+p, li { max-width: 42rem; }
+.lede { font-size: 1.28rem; line-height: 1.5; color: var(--ink-soft); max-width: 36rem; margin: 0 0 2rem; }
+section > p:first-of-type { margin-top: 0; }
+
+/* Textmarker: das eine auffällige Element */
+code, kbd { font-family: var(--mono); font-size: .88em; }
+:not(pre) > code {
+  padding: .05em .3em; color: var(--marker-ink); border-radius: .2em;
+  background: linear-gradient(100deg, transparent 0 .12em, var(--marker) .12em calc(100% - .1em), transparent calc(100% - .1em)) 0 62% / 100% 72% no-repeat;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: .05em .4em; background: var(--sheet); }
+
+/* ---------- Terminal ---------- */
+.term { background: var(--term); color: var(--term-ink); border-radius: 12px; font: 400 .9rem/1.65 var(--mono); overflow: hidden; }
+.term-bar { display: flex; gap: .45rem; padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.term-bar i { width: .7rem; height: .7rem; border-radius: 50%; background: rgba(255,255,255,.16); }
+.term pre { margin: 0; padding: 1rem 1.2rem 1.2rem; overflow-x: auto; white-space: pre; }
+.term .p { color: var(--term-dim); user-select: none; }
+.term .c { color: #fff; font-weight: 600; }
+.term .d { color: var(--term-dim); }
+.term .n { color: var(--new-term); }
+.term .u { color: var(--upd-term); }
+.term .w { color: var(--warn-term); }
+.term .rule { color: var(--term-dim); }
+.hero-term { max-width: 44rem; box-shadow: 0 24px 48px -28px rgba(24, 33, 58, .55); }
+.hero-term .line { display: block; }
+.hero-term.play .line { opacity: 0; animation: show .01s forwards; animation-delay: calc(var(--i) * 140ms + 600ms); }
+.hero-term.play .typed { display: inline-block; overflow: hidden; vertical-align: bottom; width: 0; animation: type .55s steps(13) .1s forwards; }
+@keyframes show { to { opacity: 1; } }
+@keyframes type { to { width: 13ch; } }
+@media (prefers-reduced-motion: reduce) {
+  .hero-term.play .line { opacity: 1; animation: none; }
+  .hero-term.play .typed { width: auto; animation: none; }
+}
+
+/* Codeblöcke im Text */
+.cmd { position: relative; margin: 1rem 0 1.4rem; max-width: 42rem; }
+.cmd pre { margin: 0; padding: .85rem 6.4rem .85rem 1.1rem; background: var(--term); color: var(--term-ink); border-radius: 10px; font: 400 .9rem/1.6 var(--mono); overflow-x: auto; }
+.cmd pre .p { color: var(--term-dim); user-select: none; }
+.cmd pre .d { color: var(--term-dim); }
+.copy { position: absolute; top: .45rem; right: .45rem; border: 0; border-radius: 7px; padding: .38rem .55rem; background: rgba(255,255,255,.09); color: var(--term-ink); font: 600 .78rem var(--sans); cursor: pointer; }
+.copy:hover { background: rgba(255,255,255,.18); }
+.copy[data-done] { background: var(--marker); color: var(--marker-ink); }
+
+/* ---------- Installation: Betriebssystem-Tabs ---------- */
+.tabs { max-width: 42rem; margin-top: 1.4rem; }
+.tablist { display: flex; gap: .3rem; border-bottom: 2px solid var(--rule); }
+.tablist button { font: 600 1rem var(--sans); color: var(--ink-soft); background: none; border: 0; padding: .6rem 1rem; margin-bottom: -2px; border-bottom: 3px solid transparent; cursor: pointer; }
+.tablist button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabpanel { padding-top: .6rem; }
+.tabpanel[hidden] { display: none; }
+
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 1rem 0; }
+ol.steps > li { counter-increment: s; position: relative; padding-left: 2.6rem; margin-bottom: 1.4rem; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: .05rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); font-weight: 800; font-size: .9rem; }
+ol.steps .cmd { margin: .6rem 0 0; }
+
+/* ---------- Hinweise ---------- */
+.note { max-width: 42rem; margin: 1.4rem 0; padding: .9rem 1.1rem; background: var(--sheet); border-left: 4px solid var(--warn); border-radius: 0 8px 8px 0; }
+.note p { margin: .2rem 0; }
+.note strong { color: var(--ink); }
+
+/* ---------- Befehlsreferenz ---------- */
+.ref { width: 100%; max-width: 50rem; border-collapse: collapse; margin: 1rem 0; font-size: .98rem; }
+.ref th { text-align: left; font-weight: 600; color: var(--ink-soft); border-bottom: 2px solid var(--rule); padding: .5rem .8rem .5rem 0; }
+.ref td { vertical-align: top; border-bottom: 1px solid var(--rule); padding: .65rem .8rem .65rem 0; }
+.ref td:first-child { white-space: nowrap; }
+.ref td:first-child code { font-weight: 600; }
+.ref .alias { display: block; color: var(--ink-soft); font-size: .85rem; margin-top: .15rem; }
+
+.legend { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1rem; max-width: 42rem; margin: 1rem 0 1.4rem; }
+.legend dt { font-family: var(--mono); font-weight: 600; text-align: center; min-width: 1.6rem; }
+.legend dd { margin: 0; }
+.legend .n { color: var(--new); } .legend .u { color: var(--upd); } .legend .w { color: var(--warn); } .legend .g { color: var(--ink-soft); }
+
+details { max-width: 42rem; border-bottom: 1px solid var(--rule); padding: .2rem 0; }
+details summary { cursor: pointer; font-weight: 600; padding: .7rem 0; list-style: none; display: flex; justify-content: space-between; gap: 1rem; }
+details summary::-webkit-details-marker { display: none; }
+details summary::after { content: "+"; font-weight: 400; font-size: 1.3rem; line-height: 1; color: var(--ink-soft); transition: transform .2s; }
+details[open] summary::after { transform: rotate(45deg); }
+details > *:not(summary) { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { details summary::after { transition: none; } }
+
+footer { margin-top: 5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: .92rem; max-width: 42rem; }
+
+.mobile-head { display: none; }
+
+/* ---------- Mobil ---------- */
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; padding: 0 16px; gap: 0; }
+  nav.toc { display: none; }
+  .mobile-head { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 0 0; }
+  .mobile-head a.gh { font-size: .95rem; }
+  main { padding-top: 0; }
+  h1 { margin-top: 1.6rem; }
+  h2 { margin-top: 3.4rem; }
+  .term { font-size: .78rem; border-radius: 10px; }
+  .term pre { padding: .8rem .9rem 1rem; }
+  .cmd pre { padding: 2.5rem .9rem .85rem; font-size: .8rem; }
+  .ref thead { display: none; }
+  .ref tr { display: block; border-bottom: 1px solid var(--rule); padding: .55rem 0; }
+  .ref td { display: block; border: 0; padding: .1rem 0; }
+  .ref td:first-child { white-space: normal; }
+  .tablist button { padding: .55rem .7rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <nav class="toc" aria-label="Inhalt">
+    <a class="brand" href="#top">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#203052"/><rect x="7" y="17" width="18" height="6" rx="2" fill="#F4E04D"/><path d="M10 8v9M16 8v9M22 8v9" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+      linksta
+    </a>
+    <ul>
+      <li><a href="#installieren">Installieren</a></li>
+      <li><a href="#einrichten">Einrichten</a></li>
+      <li><a href="#kurse">Kurse auswählen</a></li>
+      <li><a href="#pull">Aktualisieren</a></li>
+      <li><a href="#offline">Offline arbeiten</a></li>
+      <li><a href="#befehle">Alle Befehle</a></li>
+      <li><a href="#automatisch">Automatisch syncen</a></li>
+      <li><a href="#probleme">Wenn etwas hakt</a></li>
+    </ul>
+    <p class="gh"><a href="https://github.com/K1ngGrim/linksta" data-repo-link>Quellcode auf GitHub</a></p>
+  </nav>
+
+  <main id="top">
+    <div class="mobile-head">
+      <a class="brand" href="#top">
+        <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#203052"/><rect x="7" y="17" width="18" height="6" rx="2" fill="#F4E04D"/><path d="M10 8v9M16 8v9M22 8v9" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+        linksta
+      </a>
+      <a class="gh" href="https://github.com/K1ngGrim/linksta" data-repo-link>GitHub</a>
+    </div>
+
+    <h1>Deine ILIAS-Kurse, offline auf dem Rechner.</h1>
+    <p class="lede">linksta lädt alle Dateien deiner Kurse herunter und holt mit einem Befehl nur das, was neu ist. Für macOS, Linux und Windows.</p>
+
+    <div class="term hero-term" id="hero" aria-label="Beispielausgabe von linksta pull">
+      <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+<pre><span class="line" style="--i:0"><span class="p">~ $ </span><span class="c"><span class="typed">linksta pull</span></span></span><span class="line" style="--i:1"><span class="rule">── Explainable AI Lecture ─────────────────</span></span><span class="line" style="--i:2">  <span class="n">＋</span> Slides/VL-05-Concept-based-Explanations.pdf <span class="d">5,5 MB</span></span><span class="line" style="--i:3">  <span class="u">↻</span> Slides/VL-04-Concept-based-Explanations.pdf <span class="d">5 MB</span></span><span class="line" style="--i:4"><span class="n">✓</span> 1 neu, 1 aktualisiert <span class="d">(5 Dateien, 10,5 MB geladen)</span></span><span class="line" style="--i:5"><span class="rule">── Wissenschaftstheorie WS2026 ────────────</span></span><span class="line" style="--i:6">  <span class="n">＋</span> Vortragsliste.pdf <span class="d">78,3 KB</span></span><span class="line" style="--i:7">  <span class="w">⚠</span> Konflikt: Skript.pdf – deine Version wurde als</span><span class="line" style="--i:8">    <span class="c">Skript (lokal 2026-11-06 14-30).pdf</span> behalten.</span><span class="line" style="--i:9"><span class="n">✓</span> 1 neu, 1 Konflikt(e) <span class="d">(4 Dateien, 1,2 MB geladen)</span></span></pre>
+    </div>
+
+    <section id="installieren" aria-labelledby="h-inst">
+      <h2 id="h-inst">Installieren</h2>
+      <p>linksta ist eine einzelne Programmdatei. Du musst nichts weiter installieren, auch kein .NET.</p>
+
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="Betriebssystem">
+          <button role="tab" id="t-mac" aria-controls="p-mac" aria-selected="true">macOS</button>
+          <button role="tab" id="t-lin" aria-controls="p-lin" aria-selected="false" tabindex="-1">Linux</button>
+          <button role="tab" id="t-win" aria-controls="p-win" aria-selected="false" tabindex="-1">Windows</button>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="p-mac" aria-labelledby="t-mac">
+          <ol class="steps">
+            <li>Lade die passende Datei von der <a href="https://github.com/K1ngGrim/linksta/releases/latest" data-repo-link="/releases/latest">Release-Seite</a>: <code>linksta-osx-arm64.tar.gz</code> für Apple-Silicon-Macs (M1 und neuer), <code>linksta-osx-x64.tar.gz</code> für Intel-Macs. Welche du brauchst, steht im Apple-Menü unter „Über diesen Mac“ bei „Chip“.</li>
+            <li>Entpacken und in einen Ordner legen, der im Suchpfad liegt:
+              <div class="cmd"><pre>mkdir -p ~/.local/bin
+tar -xzf ~/Downloads/linksta-osx-arm64.tar.gz -C ~/.local/bin</pre></div>
+            </li>
+            <li>macOS blockiert Programme aus dem Internet, die nicht von Apple beglaubigt sind. Gib linksta einmalig frei:
+              <div class="cmd"><pre>xattr -d com.apple.quarantine ~/.local/bin/linksta</pre></div>
+            </li>
+            <li>Falls <code>linksta</code> danach nicht gefunden wird, fehlt der Ordner im Suchpfad:
+              <div class="cmd"><pre>echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc</pre></div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="p-lin" aria-labelledby="t-lin" hidden>
+          <ol class="steps">
+            <li>Lade <code>linksta-linux-x64.tar.gz</code> (bzw. <code>linux-arm64</code> für Raspberry Pi &amp; Co.) von der <a href="https://github.com/K1ngGrim/linksta/releases/latest" data-repo-link="/releases/latest">Release-Seite</a> und entpacke sie:
+              <div class="cmd"><pre>mkdir -p ~/.local/bin
+tar -xzf ~/Downloads/linksta-linux-x64.tar.gz -C ~/.local/bin</pre></div>
+            </li>
+            <li>Damit linksta dein Passwort im Schlüsselbund speichern kann, brauchst du <code>secret-tool</code>. Ohne das Programm landet es in einer Datei, die nur du lesen kannst.
+              <div class="cmd"><pre>sudo apt install libsecret-tools   <span class="d"># Debian/Ubuntu</span>
+sudo dnf install libsecret         <span class="d"># Fedora</span></pre></div>
+            </li>
+            <li>Falls <code>linksta</code> nicht gefunden wird:
+              <div class="cmd"><pre>echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc</pre></div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="p-win" aria-labelledby="t-win" hidden>
+          <ol class="steps">
+            <li>Lade <code>linksta-win-x64.zip</code> von der <a href="https://github.com/K1ngGrim/linksta/releases/latest" data-repo-link="/releases/latest">Release-Seite</a> und entpacke <code>linksta.exe</code> nach <code>%USERPROFILE%\bin</code>.</li>
+            <li>Ordner zum Suchpfad hinzufügen, in PowerShell:
+              <div class="cmd"><pre>[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\bin", "User")</pre></div>
+              Danach ein neues Terminal öffnen.
+            </li>
+            <li>Beim ersten Start kann Windows SmartScreen warnen, weil das Programm nicht signiert ist. Klicke auf „Weitere Informationen“ und dann „Trotzdem ausführen“.</li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>Aus dem Quellcode bauen</h3>
+      <p>Mit installiertem <a href="https://dotnet.microsoft.com/download">.NET 10 SDK</a>:</p>
+      <div class="cmd"><pre>git clone https://github.com/K1ngGrim/linksta && cd linksta
+./install.sh          <span class="d"># baut und kopiert nach ~/.local/bin</span></pre></div>
+    </section>
+
+    <section id="einrichten" aria-labelledby="h-init">
+      <h2 id="h-init">Einrichten</h2>
+      <p>Einmalig ausführen. linksta fragt alles Nötige ab und prüft sofort, ob die Anmeldung klappt.</p>
+      <div class="cmd"><pre>linksta init</pre></div>
+      <ol class="steps">
+        <li><strong>URL:</strong> Füge irgendeinen Link aus deinem ILIAS ein, zum Beispiel aus der Adresszeile. linksta ermittelt daraus Server und Client-ID selbst.</li>
+        <li><strong>Benutzername und Passwort:</strong> dieselben wie beim ILIAS-Login im Browser.</li>
+        <li><strong>Sync-Ordner:</strong> wo die Kurse landen sollen. Standard ist <code>~/ILIAS</code>.</li>
+        <li><strong>Passwort speichern:</strong> Mit „y“ legt linksta es im Schlüsselbund deines Systems ab, damit du es nicht jedes Mal eingeben musst.</li>
+      </ol>
+    </section>
+
+    <section id="kurse" aria-labelledby="h-kurse">
+      <h2 id="h-kurse">Kurse auswählen</h2>
+      <p>Am schnellsten geht es über deine Kursliste aus dem Dashboard. Mit <kbd>Leertaste</kbd> wählst du Kurse an und ab, mit <kbd>Enter</kbd> übernimmst du die Auswahl.</p>
+      <div class="cmd"><pre>linksta courses</pre></div>
+      <p>Einzelne Kurse kannst du auch per Link hinzufügen, zum Beispiel aus der Adresszeile oder dem Permalink unten auf der Kursseite:</p>
+      <div class="cmd"><pre>linksta add "https://ilias.h-ka.de/goto.php/crs/1106436"</pre></div>
+      <p>Oder du klickst dich mit <code>linksta browse</code> durch das Magazin, also durch Fakultät, Studiengang und Kurs.</p>
+
+      <div class="note">
+        <p><strong>Kurse mit 🌐</strong> haben ein „/“ im Titel, zum Beispiel „WS 2026/27“. Solche Kurse blendet ILIAS über WebDAV aus. linksta lädt sie dann automatisch über die normale Weboberfläche. Für dich ändert sich dabei nichts.</p>
+      </div>
+    </section>
+
+    <section id="pull" aria-labelledby="h-pull">
+      <h2 id="h-pull">Aktualisieren</h2>
+      <p>Lädt neue und geänderte Dateien aus allen Kursen. Was sich nicht verändert hat, wird nicht erneut geladen.</p>
+      <div class="cmd"><pre>linksta pull</pre></div>
+      <p>Nur einen Kurs aktualisieren? Ein Teil des Namens reicht: <code>linksta pull wissen</code>. Mit <code>linksta status</code> siehst du vorher, was sich geändert hat, ohne etwas herunterzuladen.</p>
+
+      <h3>Was die Zeichen bedeuten</h3>
+      <dl class="legend">
+        <dt class="n">＋</dt><dd>neue Datei auf ILIAS</dd>
+        <dt class="u">↻</dt><dd>auf ILIAS geändert und neu geladen</dd>
+        <dt class="w">⚠</dt><dd>Konflikt: Du hast die Datei bearbeitet und auf ILIAS gibt es eine neue Version. Beide bleiben erhalten.</dd>
+        <dt class="g">✎</dt><dd>von dir bearbeitet, auf ILIAS unverändert. Deine Version bleibt, wie sie ist.</dd>
+        <dt class="g">⌫</dt><dd>auf ILIAS gelöscht. Lokal bleibt die Datei, bis du <code>--prune</code> nutzt.</dd>
+      </dl>
+
+      <h3>Deine Dateien sind sicher</h3>
+      <p>linksta überschreibt nie, was du selbst geändert hast. Anmerkungen in einem PDF bleiben also erhalten. Gibt es gleichzeitig eine neue Version auf ILIAS, liegt deine daneben als <code>Datei (lokal …).pdf</code>. Was auf ILIAS gelöscht wurde, verschiebt <code>linksta pull --prune</code> in den Papierkorb <code>~/ILIAS/.linksta/trash</code>. Endgültig gelöscht wird nichts. Hochgeladen wird ebenfalls nie etwas.</p>
+    </section>
+
+    <section id="offline" aria-labelledby="h-off">
+      <h2 id="h-off">Offline arbeiten</h2>
+      <p>Alle Dateien sind normale Dateien in deinem Sync-Ordner. Du kannst sie mit jedem Programm öffnen, auch ohne Internet. Ein paar Befehle helfen beim Wiederfinden:</p>
+      <div class="cmd"><pre>linksta recent             <span class="d"># was ist diese Woche neu dazugekommen?</span>
+linksta search übungsblatt <span class="d"># Dateinamen in allen Kursen durchsuchen</span>
+linksta search "*.pdf" -c wissen --open
+linksta open wissen        <span class="d"># Kursordner im Finder/Explorer öffnen</span></pre></div>
+      <p>Große Videos brauchst du nicht? Schließe sie aus, für alle Kurse oder nur für einen:</p>
+      <div class="cmd"><pre>linksta exclude add "*.mp4"
+linksta exclude add Aufzeichnungen -c "Explainable AI"
+linksta config set max-size 200   <span class="d"># nichts über 200 MB laden</span></pre></div>
+    </section>
+
+    <section id="befehle" aria-labelledby="h-ref">
+      <h2 id="h-ref">Alle Befehle</h2>
+      <p>Hilfe zu jedem Befehl bekommst du mit <code>linksta &lt;befehl&gt; --help</code>.</p>
+      <table class="ref">
+        <thead><tr><th scope="col">Befehl</th><th scope="col">Was er macht</th></tr></thead>
+        <tbody>
+          <tr><td><code>init</code></td><td>Server, Benutzer und Sync-Ordner einrichten</td></tr>
+          <tr><td><code>courses</code><span class="alias">auch: mine</span></td><td>Kurse aus „Meine Kurse und Gruppen“ an- und abwählen. Mit <code>--list</code> nur anzeigen, mit <code>--all</code> alle abonnieren.</td></tr>
+          <tr><td><code>add &lt;Link&gt;</code></td><td>Kurs per Link oder Ref-ID abonnieren, auch mehrere auf einmal</td></tr>
+          <tr><td><code>browse</code></td><td>Magazin durchsuchen und Kurse abonnieren</td></tr>
+          <tr><td><code>pull</code><span class="alias">auch: sync</span></td><td>Neue und geänderte Dateien laden. <code>--prune</code> räumt Gelöschtes weg, <code>-n</code> macht nur einen Probelauf.</td></tr>
+          <tr><td><code>status</code><span class="alias">auch: st</span></td><td>Zeigen, was <code>pull</code> tun würde</td></tr>
+          <tr><td><code>list</code><span class="alias">auch: ls</span></td><td>Abonnierte Kurse mit Dateizahl, Größe und letztem Sync</td></tr>
+          <tr><td><code>recent</code><span class="alias">auch: new</span></td><td>Was in den letzten Tagen dazugekommen ist (<code>-d 14</code> für zwei Wochen)</td></tr>
+          <tr><td><code>search &lt;Text&gt;</code></td><td>Dateinamen durchsuchen, mit <code>--open</code> direkt öffnen</td></tr>
+          <tr><td><code>open [Kurs]</code></td><td>Ordner im Dateimanager öffnen</td></tr>
+          <tr><td><code>pause</code>, <code>resume</code></td><td>Kurs vorübergehend nicht mehr aktualisieren</td></tr>
+          <tr><td><code>remove &lt;Kurs&gt;</code></td><td>Abo beenden. Die Dateien bleiben, außer mit <code>--delete-files</code>.</td></tr>
+          <tr><td><code>exclude add|remove</code></td><td>Dateien oder Ordner ausschließen, z. B. <code>"*.mp4"</code></td></tr>
+          <tr><td><code>config show|set</code></td><td>Einstellungen: <code>dir</code>, <code>parallel</code>, <code>max-size</code> …</td></tr>
+          <tr><td><code>login</code>, <code>logout</code></td><td>Passwort neu speichern oder entfernen</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="automatisch" aria-labelledby="h-auto">
+      <h2 id="h-auto">Automatisch syncen</h2>
+      <p>Damit du nie wieder an <code>pull</code> denken musst, lass es stündlich laufen. Mit <code>-q</code> gibt linksta nur neue Dateien und Fehler aus.</p>
+      <h3>macOS und Linux</h3>
+      <p>Öffne die Crontab mit <code>crontab -e</code> und füge diese Zeile hinzu:</p>
+      <div class="cmd"><pre>0 * * * * $HOME/.local/bin/linksta pull -q >> $HOME/ILIAS/.linksta/cron.log 2>&1</pre></div>
+      <h3>Windows</h3>
+      <div class="cmd"><pre>schtasks /Create /SC HOURLY /TN linksta /TR "%USERPROFILE%\bin\linksta.exe pull -q"</pre></div>
+    </section>
+
+    <section id="probleme" aria-labelledby="h-faq">
+      <h2 id="h-faq">Wenn etwas hakt</h2>
+
+      <details>
+        <summary>„Anmeldung fehlgeschlagen (401)“</summary>
+        <p>Benutzername oder Passwort stimmen nicht. Nutze dieselben Daten wie im Browser und speichere das Passwort mit <code>linksta login</code> neu. Meldet sich deine Hochschule nur über Shibboleth/SSO an, musst du im ILIAS-Profil ein eigenes lokales bzw. WebDAV-Passwort festlegen.</p>
+      </details>
+      <details>
+        <summary>Ich kenne die Client-ID nicht</summary>
+        <p>Musst du auch nicht. <code>linksta init</code> fragt den Server selbst danach. Falls das nicht klappt: Die ID steht in vielen ILIAS-Links, etwa in <code>goto_<em>CLIENT</em>_crs_123.html</code> oder hinter <code>client_id=</code>.</p>
+      </details>
+      <details>
+        <summary>Ein Kurs fehlt bei „courses“</summary>
+        <p>Die Liste kommt aus „Meine Kurse und Gruppen“ im Dashboard. Taucht ein Kurs dort nicht auf, füge ihn per Link mit <code>linksta add</code> hinzu.</p>
+      </details>
+      <details>
+        <summary>Der WebDAV-Link aus ILIAS funktioniert nicht</summary>
+        <p>ILIAS zeigt den Link bei jedem Kurs an, verweigert aber den Zugriff, wenn der Titel ein „/“ enthält. linksta erkennt das und nutzt in diesem Fall die Weboberfläche. Solche Kurse sind in <code>linksta list</code> mit 🌐 markiert.</p>
+      </details>
+      <details>
+        <summary>Mitten im Download abgebrochen</summary>
+        <p>Kein Problem. Halb geladene Dateien werden verworfen, alles andere bleibt. Der nächste <code>pull</code> macht dort weiter, wo der letzte aufgehört hat.</p>
+      </details>
+      <details>
+        <summary>Wo speichert linksta was?</summary>
+        <p>Die Einstellungen liegen unter <code>~/Library/Application Support/linksta</code> (macOS), <code>~/.config/linksta</code> (Linux) bzw. <code>%APPDATA%\linksta</code> (Windows). Das Passwort liegt im Schlüsselbund des Systems. Sync-Status, Verlauf und Papierkorb liegen in <code>~/ILIAS/.linksta</code>. Zugangsdaten gehen nur an deinen ILIAS-Server.</p>
+      </details>
+    </section>
+
+    <footer>
+      linksta ist ein privates Projekt und gehört nicht zu ILIAS oder einer Hochschule. <a href="https://github.com/K1ngGrim/linksta" data-repo-link>Quellcode und Fehler melden</a>
+    </footer>
+  </main>
+</div>
+
+<script>
+// Auf GitHub Pages die Links automatisch auf das echte Repo zeigen lassen (user.github.io/repo)
+(function () {
+  var m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  if (!m) return;
+  var repo = location.pathname.split('/').filter(Boolean)[0] || 'linksta';
+  var base = 'https://github.com/' + m[1] + '/' + repo;
+  document.querySelectorAll('[data-repo-link]').forEach(function (a) {
+    a.href = base + (a.getAttribute('data-repo-link') || '');
+  });
+  document.querySelectorAll('pre').forEach(function (pre) {
+    pre.innerHTML = pre.innerHTML.replace(/https:\/\/github\.com\/K1ngGrim\/linksta/g, base);
+  });
+})();
+
+// Terminal-Animation einmal abspielen
+document.getElementById('hero').classList.add('play');
+
+// Tabs (Pfeiltasten wie bei nativen Tabs) – Betriebssystem vorauswählen
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function select(tab) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { select(t); });
+    t.addEventListener('keydown', function (e) {
+      var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      var next = tabs[(i + d + tabs.length) % tabs.length];
+      select(next); next.focus();
+    });
+  });
+  var ua = navigator.userAgent;
+  if (/Windows/.test(ua)) select(tabs[2]);
+  else if (/Linux|X11/.test(ua) && !/Android/.test(ua)) select(tabs[1]);
+})();
+
+// Kopieren-Knopf an jedem Befehlsblock
+document.querySelectorAll('.cmd').forEach(function (box) {
+  var pre = box.querySelector('pre');
+  var btn = document.createElement('button');
+  btn.className = 'copy';
+  btn.type = 'button';
+  btn.textContent = 'Kopieren';
+  btn.addEventListener('click', function () {
+    var text = pre.innerText.split('\n').map(function (l) { return l.replace(/\s+#.*$/, ''); }).join('\n').trim();
+    navigator.clipboard.writeText(text).then(function () {
+      btn.textContent = 'Kopiert';
+      btn.setAttribute('data-done', '');
+      setTimeout(function () { btn.textContent = 'Kopieren'; btn.removeAttribute('data-done'); }, 1600);
+    });
+  });
+  box.appendChild(btn);
+});
+
+// Aktuellen Abschnitt in der Navigation markieren
+(function () {
+  var links = {};
+  document.querySelectorAll('.toc li a').forEach(function (a) { links[a.hash.slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      Object.keys(links).forEach(function (k) { links[k].removeAttribute('aria-current'); });
+      if (links[en.target.id]) links[en.target.id].setAttribute('aria-current', 'true');
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(function (s) { obs.observe(s); });
+})();
+</script>
+</body>
+</html>
